@@ -6,7 +6,7 @@ with open(os.path.join(this_dir, "README.txt"), encoding="utf-8") as f:
     long_description = f.read()
 
 setuptools.setup(
-    name="table_ocr",
+    name="pai_table_ocr",
     version="0.2.5",
     author="Eric Ihli",
     author_email="eihli@owoga.com",
@@ -16,7 +16,7 @@ setuptools.setup(
     url="https://github.com/eihli/image-table-ocr",
     packages=setuptools.find_packages(),
     package_data={
-        "table_ocr": ["tessdata/table-ocr.traineddata", "tessdata/eng.traineddata"]
+        "pai_table_ocr": ["tessdata/table-ocr.traineddata", "tessdata/eng.traineddata"]
     },
     classifiers=[
         "Programming Language :: Python :: 3",
