@@ -8,20 +8,28 @@ logger = get_logger(__name__)
 
 # Wrapper around the Poppler command line utility "pdfimages" and helpers for
 # finding the output files of that command.
-def pdf_to_images(pdf_filepath):
+# adding an optional dir folder where temporary image and other files will get created. 
+# It is responsibility of the caller to delete or keep such dir.
+def pdf_to_images(pdf_filepath, output_dir=None):
     """
     Turn a pdf into images
     Returns the filenames of the created images sorted lexicographically.
+    
+    Args:
+        pdf_filepath: Path to the PDF file
+        output_dir: Optional directory to save images to. If None, uses the directory of the PDF.
     """
     directory, filename = os.path.split(pdf_filepath)
-    image_filenames = pdfimages(pdf_filepath)
+    # Use output_dir if provided, otherwise use the PDF's directory
+    target_dir = output_dir if output_dir is not None else directory
+    image_filenames = pdfimages(pdf_filepath, target_dir)
 
     # Since pdfimages creates a number of files named each for there page number
     # and doesn't return us the list that it created
-    return sorted([os.path.join(directory, f) for f in image_filenames])
+    return sorted([os.path.join(target_dir, f) for f in image_filenames])
 
 
-def pdfimages(pdf_filepath):
+def pdfimages(pdf_filepath, output_dir=None):
     """
     Uses the `pdfimages` utility from Poppler
     (https://poppler.freedesktop.org/). Creates images out of each page. Images
@@ -29,17 +37,23 @@ def pdfimages(pdf_filepath):
 
     This should work up to pdfs with 999 pages since find matching files in dir
     uses 3 digits in its regex.
+    
+    Args:
+        pdf_filepath: Path to the PDF file
+        output_dir: Optional directory to save images to. If None, uses the directory of the PDF.
     """
     directory, filename = os.path.split(pdf_filepath)
-    if not os.path.isabs(directory):
-        directory = os.path.abspath(directory)
+    if output_dir is None:
+        output_dir = directory
+    if not os.path.isabs(output_dir):
+        output_dir = os.path.abspath(output_dir)
     filename_sans_ext = filename.split(".pdf")[0]
 
     # pdfimages outputs results to the current working directory
-    with working_dir(directory):
-        subprocess.run(["pdfimages", "-png", filename, filename.split(".pdf")[0]])
+    with working_dir(output_dir):
+        subprocess.run(["pdfimages", "-png", pdf_filepath, filename_sans_ext])
 
-    image_filenames = find_matching_files_in_dir(filename_sans_ext, directory)
+    image_filenames = find_matching_files_in_dir(filename_sans_ext, output_dir)
     logger.debug(
         "Converted {} into files:\n{}".format(pdf_filepath, "\n".join(image_filenames))
     )
