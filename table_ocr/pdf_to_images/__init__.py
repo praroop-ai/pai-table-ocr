@@ -19,6 +19,10 @@ def pdf_to_images(pdf_filepath, output_dir=None):
         pdf_filepath: Path to the PDF file
         output_dir: Optional directory to save images to. If None, uses the directory of the PDF.
     """
+
+    if not os.path.isabs(pdf_filepath):
+        pdf_filepath = os.path.abspath(pdf_filepath)
+
     directory, filename = os.path.split(pdf_filepath)
     # Use output_dir if provided, otherwise use the PDF's directory
     target_dir = output_dir if output_dir is not None else directory
@@ -49,15 +53,37 @@ def pdfimages(pdf_filepath, output_dir=None):
         output_dir = os.path.abspath(output_dir)
     filename_sans_ext = filename.split(".pdf")[0]
 
-    # pdfimages outputs results to the current working directory
-    with working_dir(output_dir):
-        subprocess.run(["pdfimages", "-png", pdf_filepath, filename_sans_ext])
-
-    image_filenames = find_matching_files_in_dir(filename_sans_ext, output_dir)
-    logger.debug(
-        "Converted {} into files:\n{}".format(pdf_filepath, "\n".join(image_filenames))
-    )
-    return image_filenames
+    try:
+        # pdfimages outputs results to the current working directory
+        with working_dir(output_dir):
+            result = subprocess.run(
+                ["pdfimages", "-png", pdf_filepath, filename_sans_ext], 
+                capture_output=True, 
+                check=True
+            )
+            
+        image_filenames = find_matching_files_in_dir(filename_sans_ext, output_dir)
+        logger.debug(
+            "Converted {} into files:\n{}".format(pdf_filepath, "\n".join(image_filenames))
+        )
+        return image_filenames
+        
+    except subprocess.CalledProcessError as e:
+        error_message = f"Error running pdfimages on {pdf_filepath}: {e}"
+        logger.error(error_message)
+        if e.stderr:
+            logger.error(f"pdfimages stderr: {e.stderr.decode('utf-8', errors='replace')}")
+        raise RuntimeError(error_message) from e
+        
+    except FileNotFoundError as e:
+        error_message = f"pdfimages command not found. Make sure Poppler is installed: {e}"
+        logger.error(error_message)
+        raise RuntimeError(error_message) from e
+        
+    except Exception as e:
+        error_message = f"Unexpected error processing PDF {pdf_filepath}: {e}"
+        logger.error(error_message)
+        raise RuntimeError(error_message) from e
 
 
 def find_matching_files_in_dir(file_prefix, directory):
